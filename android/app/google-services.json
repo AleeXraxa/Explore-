@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "999550126183",
+    "project_id": "explore-ai-94899",
+    "storage_bucket": "explore-ai-94899.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:999550126183:android:5399751d026a0f2c8cecc2",
+        "android_client_info": {
+          "package_name": "com.example.city_guide_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEJX4F7_c0vWbFd56WDHEi-lz4XW8kROc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
