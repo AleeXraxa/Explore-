@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:city_guide_app/app/data/models/city_model.dart';
 import 'package:city_guide_app/app/data/models/user_role.dart';
 import 'package:city_guide_app/app/data/services/auth_service.dart';
@@ -22,8 +24,10 @@ class UserHomeController extends GetxController {
   final RxString profileEmail = 'alee@explora.app'.obs;
   final RxString profilePhone = '+92 300 1234567'.obs;
   final RxBool isDetectingCity = false.obs;
-  late final List<CityModel> cities;
+  final RxList<CityModel> cities = <CityModel>[].obs;
   late final Rx<CityModel> selectedCity;
+  final RxString citySearchQuery = ''.obs;
+  StreamSubscription<List<CityModel>>? _citiesSubscription;
 
   String get title => 'Explore Your City';
   String get subtitle => 'Discover places, build plans, and save favorites.';
@@ -32,6 +36,15 @@ class UserHomeController extends GetxController {
   String get phone => profilePhone.value;
   String get cityName => selectedCity.value.name;
   String get cityDescription => selectedCity.value.description;
+  List<CityModel> get filteredCities {
+    final String query = citySearchQuery.value.trim().toLowerCase();
+    if (query.isEmpty) return cities;
+    return cities.where((CityModel city) {
+      final String name = city.name.toLowerCase();
+      final String country = city.country.toLowerCase();
+      return name.contains(query) || country.contains(query);
+    }).toList();
+  }
   List<String> get exploreCategories => const <String>[
     'All',
     'Food',
@@ -88,6 +101,11 @@ class UserHomeController extends GetxController {
 
   void selectCity(CityModel city) {
     selectedCity.value = city;
+    citySearchQuery.value = '';
+  }
+
+  void setCitySearchQuery(String value) {
+    citySearchQuery.value = value;
   }
 
   void logout() {
@@ -150,8 +168,14 @@ class UserHomeController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    cities = _cityService.getAvailableCities();
+    cities.assignAll(_cityService.getAvailableCities());
     selectedCity = _cityService.getDefaultCity().obs;
+    _citiesSubscription = _cityService.watchCities().listen((List<CityModel> items) {
+      cities.assignAll(items);
+      if (!items.any((CityModel city) => city.name == selectedCity.value.name)) {
+        selectedCity.value = items.first;
+      }
+    });
     _authService.setRole(UserRole.user);
   }
 
@@ -159,5 +183,11 @@ class UserHomeController extends GetxController {
   void onReady() {
     super.onReady();
     detectCurrentCityFromLocation();
+  }
+
+  @override
+  void onClose() {
+    _citiesSubscription?.cancel();
+    super.onClose();
   }
 }

@@ -71,8 +71,9 @@ class _HomeTab extends StatelessWidget {
         builder: (BuildContext context) {
           return Obx(
             () => CitySelectionSheet(
-              cities: controller.cities,
+              cities: controller.filteredCities,
               selectedCity: controller.selectedCity.value,
+              onSearchChanged: controller.setCitySearchQuery,
               onCitySelected: (city) {
                 controller.selectCity(city);
                 Get.back<void>();
@@ -270,8 +271,9 @@ class _ExploreTab extends StatelessWidget {
                           ),
                         ),
                         builder: (BuildContext context) => CitySelectionSheet(
-                          cities: controller.cities,
+                          cities: controller.filteredCities,
                           selectedCity: controller.selectedCity.value,
+                          onSearchChanged: controller.setCitySearchQuery,
                           onCitySelected: (city) {
                             controller.selectCity(city);
                             Get.back<void>();

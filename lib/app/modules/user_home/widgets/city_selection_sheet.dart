@@ -11,11 +11,13 @@ class CitySelectionSheet extends StatelessWidget {
     required this.cities,
     required this.selectedCity,
     required this.onCitySelected,
+    required this.onSearchChanged,
   });
 
   final List<CityModel> cities;
   final CityModel selectedCity;
   final ValueChanged<CityModel> onCitySelected;
+  final ValueChanged<String> onSearchChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -44,56 +46,103 @@ class CitySelectionSheet extends StatelessWidget {
               style: AppTextStyles.body.copyWith(fontSize: 13.sp),
             ),
             SizedBox(height: AppSpacing.md.h),
-            ...cities.map((CityModel city) {
-              final bool active = city.name == selectedCity.name;
-              return Padding(
-                padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
-                child: InkWell(
-                  onTap: () => onCitySelected(city),
-                  borderRadius: BorderRadius.circular(14.r),
-                  child: Container(
-                    padding: EdgeInsets.all(AppSpacing.md.w),
-                    decoration: BoxDecoration(
-                      color: active
-                          ? AppColors.accent.withValues(alpha: 0.14)
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(14.r),
-                      border: Border.all(
-                        color: active
-                            ? AppColors.accent
-                            : AppColors.inputBorder.withValues(alpha: 0.8),
+            Container(
+              height: 50.h,
+              padding: EdgeInsets.symmetric(horizontal: AppSpacing.md.w),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12.r),
+                border: Border.all(
+                  color: AppColors.inputBorder.withValues(alpha: 0.8),
+                ),
+              ),
+              child: Row(
+                children: <Widget>[
+                  Icon(Icons.search_rounded, size: 18.sp, color: AppColors.textSecondary),
+                  SizedBox(width: AppSpacing.xs.w),
+                  Expanded(
+                    child: TextField(
+                      onChanged: onSearchChanged,
+                      decoration: InputDecoration(
+                        hintText: 'Search city',
+                        border: InputBorder.none,
+                        isDense: true,
+                        hintStyle: AppTextStyles.body.copyWith(fontSize: 13.sp),
                       ),
-                    ),
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text(
-                                '${city.name}, ${city.country}',
-                                style: AppTextStyles.button.copyWith(fontSize: 14.sp),
-                              ),
-                              SizedBox(height: 3.h),
-                              Text(
-                                city.description,
-                                style: AppTextStyles.body.copyWith(fontSize: 12.5.sp),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (active)
-                          Icon(
-                            Icons.check_circle_rounded,
-                            color: AppColors.inputFocused,
-                            size: 18.sp,
-                          ),
-                      ],
+                      style: AppTextStyles.body.copyWith(fontSize: 13.sp),
                     ),
                   ),
-                ),
-              );
-            }),
+                ],
+              ),
+            ),
+            SizedBox(height: AppSpacing.md.h),
+            SizedBox(
+              height: 380.h,
+              child: cities.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No city found',
+                        style: AppTextStyles.body,
+                      ),
+                    )
+                  : ListView.separated(
+                      itemCount: cities.length,
+                      separatorBuilder: (context, index) =>
+                          SizedBox(height: AppSpacing.sm.h),
+                      itemBuilder: (BuildContext context, int index) {
+                        final CityModel city = cities[index];
+                        final bool active = city.name == selectedCity.name;
+                        return InkWell(
+                          onTap: () => onCitySelected(city),
+                          borderRadius: BorderRadius.circular(14.r),
+                          child: Container(
+                            padding: EdgeInsets.all(AppSpacing.md.w),
+                            decoration: BoxDecoration(
+                              color: active
+                                  ? AppColors.accent.withValues(alpha: 0.14)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(14.r),
+                              border: Border.all(
+                                color: active
+                                    ? AppColors.accent
+                                    : AppColors.inputBorder.withValues(alpha: 0.8),
+                              ),
+                            ),
+                            child: Row(
+                              children: <Widget>[
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: <Widget>[
+                                      Text(
+                                        '${city.name}, ${city.country}',
+                                        style: AppTextStyles.button.copyWith(
+                                          fontSize: 14.sp,
+                                        ),
+                                      ),
+                                      SizedBox(height: 3.h),
+                                      Text(
+                                        city.description,
+                                        style: AppTextStyles.body.copyWith(
+                                          fontSize: 12.5.sp,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (active)
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: AppColors.inputFocused,
+                                    size: 18.sp,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
           ],
         ),
       ),

@@ -1,9 +1,13 @@
 import 'dart:math';
 
 import 'package:city_guide_app/app/data/models/city_model.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CityService {
-  const CityService();
+  CityService({FirebaseFirestore? firestore})
+      : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
 
   List<CityModel> getAvailableCities() => const <CityModel>[
     CityModel(
@@ -37,6 +41,33 @@ class CityService {
   ];
 
   CityModel getDefaultCity() => getAvailableCities().first;
+
+  Stream<List<CityModel>> watchCities() async* {
+    try {
+      await for (final QuerySnapshot<Map<String, dynamic>> snapshot
+          in _firestore.collection('cities').snapshots()) {
+        final List<CityModel> cities = snapshot.docs
+            .map((QueryDocumentSnapshot<Map<String, dynamic>> doc) {
+              final Map<String, dynamic> data = doc.data();
+              return CityModel.fromMap(data);
+            })
+            .toList();
+
+        if (cities.isEmpty) {
+          yield getAvailableCities();
+        } else {
+          cities.sort(
+            (CityModel a, CityModel b) => a.name.toLowerCase().compareTo(
+              b.name.toLowerCase(),
+            ),
+          );
+          yield cities;
+        }
+      }
+    } catch (_) {
+      yield getAvailableCities();
+    }
+  }
 
   CityModel getNearestCity({
     required double latitude,
