@@ -35,8 +35,8 @@ class PremiumBottomNavBar extends StatelessWidget {
         AppSpacing.md.h,
       ),
       child: Container(
-        height: 66.h,
-        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
+        height: 70.h,
+        padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20.r),
@@ -83,7 +83,7 @@ class PremiumBottomNavBar extends StatelessWidget {
                         onTap: () => onTap(index),
                         borderRadius: BorderRadius.circular(14.r),
                         child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4.h),
+                          padding: EdgeInsets.symmetric(vertical: 2.h),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             mainAxisSize: MainAxisSize.min,
@@ -100,24 +100,30 @@ class PremiumBottomNavBar extends StatelessWidget {
                                       : AppColors.textSecondary,
                                 ),
                               ),
-                              SizedBox(height: 4.h),
-                              AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 220),
-                                curve: Curves.easeInOut,
-                                style: AppTextStyles.body.copyWith(
-                                  fontSize: 11.6.sp,
-                                  height: 1,
-                                  fontWeight: active
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                  color: active
-                                      ? AppColors.inputFocused
-                                      : AppColors.textSecondary,
-                                ),
-                                child: Text(
-                                  item.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.fade,
+                              SizedBox(height: 2.h),
+                              SizedBox(
+                                height: 13.h,
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: AnimatedDefaultTextStyle(
+                                    duration: const Duration(milliseconds: 220),
+                                    curve: Curves.easeInOut,
+                                    style: AppTextStyles.body.copyWith(
+                                      fontSize: 11.6.sp,
+                                      height: 1,
+                                      fontWeight: active
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                      color: active
+                                          ? AppColors.inputFocused
+                                          : AppColors.textSecondary,
+                                    ),
+                                    child: Text(
+                                      item.label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ],

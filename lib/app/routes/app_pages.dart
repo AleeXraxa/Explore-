@@ -13,6 +13,7 @@ import 'package:city_guide_app/app/modules/splash/views/splash_view.dart';
 import 'package:city_guide_app/app/modules/user_home/bindings/user_home_binding.dart';
 import 'package:city_guide_app/app/modules/user_home/views/user_home_view.dart';
 import 'package:city_guide_app/app/routes/app_routes.dart';
+import 'package:city_guide_app/app/routes/middlewares/admin_guard_middleware.dart';
 import 'package:get/get.dart';
 
 class AppPages {
@@ -46,6 +47,7 @@ class AppPages {
       name: AppRoutes.adminHome,
       page: AdminHomeView.new,
       binding: AdminHomeBinding(),
+      middlewares: <GetMiddleware>[AdminGuardMiddleware()],
       transition: Transition.fadeIn,
       transitionDuration: const Duration(milliseconds: 380),
     ),

@@ -13,6 +13,7 @@ class AuthService {
   final FirebaseAuth _firebaseAuth;
   final FirebaseFirestore _firebaseFirestore;
   final Rx<UserRole> currentRole = UserRole.user.obs;
+  bool get isLoggedIn => _firebaseAuth.currentUser != null;
 
   void setRole(UserRole role) {
     currentRole.value = role;

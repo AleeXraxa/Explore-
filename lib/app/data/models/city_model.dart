@@ -1,5 +1,6 @@
 class CityModel {
   const CityModel({
+    this.id = '',
     required this.name,
     required this.country,
     required this.description,
@@ -7,6 +8,7 @@ class CityModel {
     required this.longitude,
   });
 
+  final String id;
   final String name;
   final String country;
   final String description;
@@ -15,6 +17,7 @@ class CityModel {
 
   factory CityModel.fromMap(Map<String, dynamic> map) {
     return CityModel(
+      id: (map['id'] as String?)?.trim() ?? '',
       name: (map['name'] as String?)?.trim() ?? 'Unknown City',
       country: (map['country'] as String?)?.trim() ?? 'Unknown Country',
       description:

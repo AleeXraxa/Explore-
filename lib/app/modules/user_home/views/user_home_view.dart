@@ -1,3 +1,4 @@
+import 'package:city_guide_app/app/data/models/admin_listing_model.dart';
 import 'package:city_guide_app/app/modules/user_home/controllers/user_home_controller.dart';
 import 'package:city_guide_app/app/modules/user_home/widgets/category_grid.dart';
 import 'package:city_guide_app/app/modules/user_home/widgets/city_selection_sheet.dart';
@@ -5,9 +6,6 @@ import 'package:city_guide_app/app/modules/user_home/widgets/home_header.dart';
 import 'package:city_guide_app/app/modules/user_home/widgets/home_search_bar.dart';
 import 'package:city_guide_app/app/modules/user_home/widgets/home_section_title.dart';
 import 'package:city_guide_app/app/modules/user_home/widgets/quick_actions_row.dart';
-import 'package:city_guide_app/app/modules/user_home/widgets/recommendation_list.dart';
-import 'package:city_guide_app/app/modules/user_home/widgets/today_plan_card.dart';
-import 'package:city_guide_app/app/modules/user_home/widgets/trending_carousel.dart';
 import 'package:city_guide_app/app/shared/widgets/delayed_reveal.dart';
 import 'package:city_guide_app/app/shared/widgets/premium_bottom_nav_bar.dart';
 import 'package:city_guide_app/app/routes/app_routes.dart';
@@ -32,13 +30,19 @@ class UserHomeView extends GetView<UserHomeController> {
 
     return Scaffold(
       body: Obx(
-        () => IndexedStack(
-          index: controller.selectedTabIndex.value,
+        () => Stack(
           children: <Widget>[
-            _HomeTab(controller: controller),
-            _ExploreTab(controller: controller),
-            _SavedTab(controller: controller),
-            _ProfileTab(controller: controller),
+            IndexedStack(
+              index: controller.selectedTabIndex.value,
+              children: <Widget>[
+                _HomeTab(controller: controller),
+                _ExploreTab(controller: controller),
+                _SavedTab(controller: controller),
+                _ProfileTab(controller: controller),
+              ],
+            ),
+            if (controller.isCitySwitchLoading.value)
+              const _CitySwitchLoadingOverlay(),
           ],
         ),
       ),
@@ -53,6 +57,68 @@ class UserHomeView extends GetView<UserHomeController> {
   }
 }
 
+class _CitySwitchLoadingOverlay extends StatelessWidget {
+  const _CitySwitchLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Container(
+          color: Colors.white.withValues(alpha: 0.8),
+          child: Center(
+            child: Container(
+              width: 210.w,
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md.w,
+                vertical: AppSpacing.md.h,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16.r),
+                border: Border.all(
+                  color: AppColors.inputBorder.withValues(alpha: 0.8),
+                ),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 16,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  SizedBox(
+                    width: 26.w,
+                    height: 26.w,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: AppColors.inputFocused,
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.sm.h),
+                  Text(
+                    'Switching city',
+                    style: AppTextStyles.button.copyWith(fontSize: 14.sp),
+                  ),
+                  SizedBox(height: 2.h),
+                  Text(
+                    'Loading listings for your selection...',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.body.copyWith(fontSize: 12.sp),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HomeTab extends StatelessWidget {
   const _HomeTab({required this.controller});
 
@@ -61,6 +127,7 @@ class _HomeTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     void showCityPicker() {
+      controller.setCitySearchQuery('');
       showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
@@ -81,7 +148,7 @@ class _HomeTab extends StatelessWidget {
             ),
           );
         },
-      );
+      ).whenComplete(() => controller.setCitySearchQuery(''));
     }
 
     return SafeArea(
@@ -132,45 +199,236 @@ class _HomeTab extends StatelessWidget {
                   ),
                 ),
                 SizedBox(height: AppSpacing.xl.h),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 170),
-                  child: HomeSectionTitle(title: 'Trending near you'),
-                ),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 200),
-                  child: TrendingCarousel(),
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 240),
-                  child: HomeSectionTitle(title: 'Top categories'),
-                ),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 270),
-                  child: CategoryGrid(),
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 310),
-                  child: HomeSectionTitle(title: 'Today'),
-                ),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 340),
-                  child: TodayPlanCard(),
-                ),
-                SizedBox(height: AppSpacing.lg.h),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 370),
-                  child: HomeSectionTitle(title: 'Recommended for you'),
-                ),
-                const DelayedReveal(
-                  delay: Duration(milliseconds: 400),
-                  child: RecommendationList(),
-                ),
+                Obx(() {
+                  final List<AdminListingModel> cityListings =
+                      controller.cityApprovedListings;
+                  final List<AdminListingModel> trending = cityListings
+                      .take(3)
+                      .toList();
+                  final List<AdminListingModel> recommended = cityListings
+                      .skip(3)
+                      .take(3)
+                      .toList();
+
+                  if (cityListings.isEmpty) {
+                    return Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.all(AppSpacing.lg.w),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16.r),
+                        border: Border.all(
+                          color: AppColors.inputBorder.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      child: Column(
+                        children: <Widget>[
+                          Icon(
+                            Icons.location_city_rounded,
+                            size: 30.sp,
+                            color: AppColors.inputFocused,
+                          ),
+                          SizedBox(height: AppSpacing.sm.h),
+                          Text(
+                            'No listings in ${controller.cityName} yet',
+                            style: AppTextStyles.button.copyWith(
+                              fontSize: 14.sp,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: AppSpacing.xs.h),
+                          Text(
+                            'Switch city or check back after new listings are approved.',
+                            style: AppTextStyles.body.copyWith(
+                              fontSize: 12.5.sp,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      const DelayedReveal(
+                        delay: Duration(milliseconds: 170),
+                        child: HomeSectionTitle(title: 'Trending in your city'),
+                      ),
+                      SizedBox(height: AppSpacing.sm.h),
+                      ...trending.map(
+                        (AdminListingModel item) => _HomeCityListingCard(
+                          item: item,
+                          onTap: () {
+                            Get.toNamed(
+                              AppRoutes.placeDetails,
+                              arguments: <String, dynamic>{
+                                'listingId': item.id,
+                                'title': item.name,
+                                'category': item.category,
+                                'rating': item.displayRating.toStringAsFixed(1),
+                                'ratingsCount': item.ratingsCount,
+                                'distance': item.address,
+                                'highlight': item.openingHours,
+                                'website': item.website,
+                                'imageUrl': item.imageUrl,
+                                'description': item.description,
+                                'contactInfo': item.contactInfo,
+                                'openingHours': item.openingHours,
+                                'address': item.address,
+                                'latitude': item.latitude != 0
+                                    ? item.latitude
+                                    : controller.selectedCity.value.latitude,
+                                'longitude': item.longitude != 0
+                                    ? item.longitude
+                                    : controller.selectedCity.value.longitude,
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                      SizedBox(height: AppSpacing.lg.h),
+                      const DelayedReveal(
+                        delay: Duration(milliseconds: 240),
+                        child: HomeSectionTitle(title: 'Top categories'),
+                      ),
+                      const DelayedReveal(
+                        delay: Duration(milliseconds: 270),
+                        child: CategoryGrid(),
+                      ),
+                      if (recommended.isNotEmpty) ...<Widget>[
+                        SizedBox(height: AppSpacing.lg.h),
+                        const DelayedReveal(
+                          delay: Duration(milliseconds: 370),
+                          child: HomeSectionTitle(title: 'Recommended for you'),
+                        ),
+                        SizedBox(height: AppSpacing.sm.h),
+                        ...recommended.map(
+                          (AdminListingModel item) => _HomeCityListingCard(
+                            item: item,
+                            onTap: () {
+                              Get.toNamed(
+                                AppRoutes.placeDetails,
+                                arguments: <String, dynamic>{
+                                  'listingId': item.id,
+                                  'title': item.name,
+                                  'category': item.category,
+                                  'rating': item.displayRating.toStringAsFixed(
+                                    1,
+                                  ),
+                                  'ratingsCount': item.ratingsCount,
+                                  'distance': item.address,
+                                  'highlight': item.openingHours,
+                                  'website': item.website,
+                                  'imageUrl': item.imageUrl,
+                                  'description': item.description,
+                                  'contactInfo': item.contactInfo,
+                                  'openingHours': item.openingHours,
+                                  'address': item.address,
+                                  'latitude': item.latitude != 0
+                                      ? item.latitude
+                                      : controller.selectedCity.value.latitude,
+                                  'longitude': item.longitude != 0
+                                      ? item.longitude
+                                      : controller.selectedCity.value.longitude,
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ],
+                  );
+                }),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _HomeCityListingCard extends StatelessWidget {
+  const _HomeCityListingCard({required this.item, required this.onTap});
+
+  final AdminListingModel item;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacing.sm.h),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14.r),
+        child: Container(
+          padding: EdgeInsets.all(AppSpacing.md.w),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14.r),
+            border: Border.all(
+              color: AppColors.inputBorder.withValues(alpha: 0.8),
+            ),
+          ),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      item.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.button.copyWith(fontSize: 14.5.sp),
+                    ),
+                    SizedBox(height: 3.h),
+                    Text(
+                      item.category,
+                      style: AppTextStyles.body.copyWith(fontSize: 12.5.sp),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      item.address,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.body.copyWith(fontSize: 12.sp),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: AppSpacing.sm.w),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: <Widget>[
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(
+                        Icons.star_rounded,
+                        size: 14.sp,
+                        color: AppColors.inputFocused,
+                      ),
+                      SizedBox(width: 2.w),
+                      Text(
+                        item.displayRating.toStringAsFixed(1),
+                        style: AppTextStyles.body.copyWith(fontSize: 12.sp),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8.h),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14.sp,
+                    color: AppColors.textSecondary,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -183,37 +441,6 @@ class _ExploreTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<_ExplorePlace> places = <_ExplorePlace>[
-      const _ExplorePlace(
-        title: 'Clifton Beach Promenade',
-        category: 'Nature',
-        rating: '4.8',
-        distance: '2.1 km',
-        highlight: 'Sunset hotspot',
-      ),
-      const _ExplorePlace(
-        title: 'Burns Road Food Street',
-        category: 'Food',
-        rating: '4.7',
-        distance: '4.3 km',
-        highlight: 'Top local cuisine',
-      ),
-      const _ExplorePlace(
-        title: 'Frere Hall & Gardens',
-        category: 'Culture',
-        rating: '4.6',
-        distance: '3.8 km',
-        highlight: 'Historic architecture',
-      ),
-      const _ExplorePlace(
-        title: 'Port Grand Night Walk',
-        category: 'Nightlife',
-        rating: '4.7',
-        distance: '5.2 km',
-        highlight: 'Live performances',
-      ),
-    ];
-
     return SafeArea(
       child: Stack(
         children: <Widget>[
@@ -236,10 +463,13 @@ class _ExploreTab extends StatelessWidget {
           ),
           Obx(() {
             final String selected = controller.selectedExploreCategory.value;
-            final List<_ExplorePlace> filtered = selected == 'All'
-                ? places
-                : places
-                      .where((_ExplorePlace p) => p.category == selected)
+            final List<AdminListingModel> filtered = selected == 'All'
+                ? controller.filteredExploreListings
+                : controller.filteredExploreListings
+                      .where(
+                        (AdminListingModel p) =>
+                            p.category.toLowerCase() == selected.toLowerCase(),
+                      )
                       .toList();
 
             return SingleChildScrollView(
@@ -262,6 +492,7 @@ class _ExploreTab extends StatelessWidget {
                   SizedBox(height: AppSpacing.xs.h),
                   InkWell(
                     onTap: () {
+                      controller.setCitySearchQuery('');
                       showModalBottomSheet<void>(
                         context: context,
                         backgroundColor: Colors.white,
@@ -279,7 +510,7 @@ class _ExploreTab extends StatelessWidget {
                             Get.back<void>();
                           },
                         ),
-                      );
+                      ).whenComplete(() => controller.setCitySearchQuery(''));
                     },
                     borderRadius: BorderRadius.circular(10.r),
                     child: Container(
@@ -312,8 +543,91 @@ class _ExploreTab extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: AppSpacing.lg.h),
-                  const HomeSearchBar(),
-                  SizedBox(height: AppSpacing.md.h),
+                  TextField(
+                    onChanged: controller.setExploreQuery,
+                    decoration: InputDecoration(
+                      hintText: 'Search places, categories, keywords...',
+                      prefixIcon: const Icon(Icons.search_rounded),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14.r),
+                        borderSide: BorderSide(
+                          color: AppColors.inputBorder.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14.r),
+                        borderSide: BorderSide(
+                          color: AppColors.inputBorder.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14.r),
+                        borderSide: const BorderSide(
+                          color: AppColors.inputFocused,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.sm.h),
+                  Obx(
+                    () => Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            initialValue: controller.exploreSort.value,
+                            decoration: InputDecoration(
+                              labelText: 'Sort',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                            ),
+                            items:
+                                const <String>[
+                                  'Top Rated',
+                                  'Most Reviewed',
+                                  'A-Z',
+                                ].map((String value) {
+                                  return DropdownMenuItem<String>(
+                                    value: value,
+                                    child: Text(value),
+                                  );
+                                }).toList(),
+                            onChanged: (String? value) {
+                              if (value != null) {
+                                controller.setExploreSort(value);
+                              }
+                            },
+                          ),
+                        ),
+                        SizedBox(width: AppSpacing.xs.w),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Text(
+                                'Min Rating: ${controller.minExploreRating.value.toStringAsFixed(1)}',
+                                style: AppTextStyles.body.copyWith(
+                                  fontSize: 12.sp,
+                                ),
+                              ),
+                              Slider(
+                                value: controller.minExploreRating.value,
+                                min: 0,
+                                max: 5,
+                                divisions: 10,
+                                onChanged: controller.setMinExploreRating,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: AppSpacing.sm.h),
                   SizedBox(
                     height: 42.h,
                     child: ListView.separated(
@@ -365,17 +679,31 @@ class _ExploreTab extends StatelessWidget {
                   ),
                   SizedBox(height: AppSpacing.lg.h),
                   ...filtered.map(
-                    (_ExplorePlace item) => _ExplorePlaceCard(
+                    (AdminListingModel item) => _ExplorePlaceCard(
                       place: item,
                       onTap: () {
                         Get.toNamed(
                           AppRoutes.placeDetails,
                           arguments: <String, dynamic>{
-                            'title': item.title,
+                            'listingId': item.id,
+                            'title': item.name,
                             'category': item.category,
-                            'rating': item.rating,
-                            'distance': item.distance,
-                            'highlight': item.highlight,
+                            'rating': item.displayRating.toStringAsFixed(1),
+                            'ratingsCount': item.ratingsCount,
+                            'distance': item.address,
+                            'highlight': item.openingHours,
+                            'website': item.website,
+                            'imageUrl': item.imageUrl,
+                            'description': item.description,
+                            'contactInfo': item.contactInfo,
+                            'openingHours': item.openingHours,
+                            'address': item.address,
+                            'latitude': item.latitude != 0
+                                ? item.latitude
+                                : controller.selectedCity.value.latitude,
+                            'longitude': item.longitude != 0
+                                ? item.longitude
+                                : controller.selectedCity.value.longitude,
                           },
                         );
                       },
@@ -394,7 +722,7 @@ class _ExploreTab extends StatelessWidget {
 class _ExplorePlaceCard extends StatelessWidget {
   const _ExplorePlaceCard({required this.place, required this.onTap});
 
-  final _ExplorePlace place;
+  final AdminListingModel place;
   final VoidCallback onTap;
 
   @override
@@ -449,7 +777,7 @@ class _ExplorePlaceCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8.r),
                     ),
                     child: Text(
-                      place.highlight,
+                      place.openingHours,
                       style: AppTextStyles.button.copyWith(
                         fontSize: 10.5.sp,
                         color: AppColors.inputFocused,
@@ -468,7 +796,7 @@ class _ExplorePlaceCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            place.title,
+                            place.name,
                             style: AppTextStyles.button.copyWith(
                               fontSize: 15.sp,
                             ),
@@ -490,9 +818,16 @@ class _ExplorePlaceCard extends StatelessWidget {
                               ),
                               SizedBox(width: 2.w),
                               Text(
-                                place.rating,
+                                place.displayRating.toStringAsFixed(1),
                                 style: AppTextStyles.body.copyWith(
                                   fontSize: 12.sp,
+                                ),
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                '(${place.ratingsCount})',
+                                style: AppTextStyles.body.copyWith(
+                                  fontSize: 11.5.sp,
                                 ),
                               ),
                               SizedBox(width: AppSpacing.sm.w),
@@ -502,10 +837,14 @@ class _ExplorePlaceCard extends StatelessWidget {
                                 color: AppColors.inputFocused,
                               ),
                               SizedBox(width: 2.w),
-                              Text(
-                                place.distance,
-                                style: AppTextStyles.body.copyWith(
-                                  fontSize: 12.sp,
+                              Expanded(
+                                child: Text(
+                                  place.address,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.body.copyWith(
+                                    fontSize: 12.sp,
+                                  ),
                                 ),
                               ),
                             ],
@@ -529,22 +868,6 @@ class _ExplorePlaceCard extends StatelessWidget {
   }
 }
 
-class _ExplorePlace {
-  const _ExplorePlace({
-    required this.title,
-    required this.category,
-    required this.rating,
-    required this.distance,
-    required this.highlight,
-  });
-
-  final String title;
-  final String category;
-  final String rating;
-  final String distance;
-  final String highlight;
-}
-
 class _SavedTab extends StatelessWidget {
   const _SavedTab({required this.controller});
 
@@ -552,30 +875,6 @@ class _SavedTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<_SavedPlace> places = <_SavedPlace>[
-      const _SavedPlace(
-        title: 'Do Darya Waterfront',
-        category: 'Favorites',
-        rating: '4.8',
-        distance: '3.2 km',
-        note: 'Dinner plan for Friday',
-      ),
-      const _SavedPlace(
-        title: 'Frere Hall & Gardens',
-        category: 'Recent',
-        rating: '4.6',
-        distance: '3.8 km',
-        note: 'Great for morning walks',
-      ),
-      const _SavedPlace(
-        title: 'Port Grand Night Walk',
-        category: 'Plans',
-        rating: '4.7',
-        distance: '5.2 km',
-        note: 'Part of weekend itinerary',
-      ),
-    ];
-
     return SafeArea(
       child: Stack(
         children: <Widget>[
@@ -598,10 +897,15 @@ class _SavedTab extends StatelessWidget {
           ),
           Obx(() {
             final String selected = controller.selectedSavedCategory.value;
-            final List<_SavedPlace> filtered = selected == 'All'
-                ? places
-                : places
-                      .where((_SavedPlace p) => p.category == selected)
+            final List<AdminListingModel> source =
+                controller.cityApprovedListings;
+            final List<AdminListingModel> filtered = selected == 'All'
+                ? source
+                : source
+                      .where(
+                        (AdminListingModel p) =>
+                            p.category.toLowerCase() == selected.toLowerCase(),
+                      )
                       .toList();
 
             return SingleChildScrollView(
@@ -701,17 +1005,31 @@ class _SavedTab extends StatelessWidget {
                     _SavedEmptyState(onExploreTap: controller.openExplore)
                   else
                     ...filtered.map(
-                      (_SavedPlace place) => _SavedPlaceCard(
+                      (AdminListingModel place) => _SavedPlaceCard(
                         place: place,
                         onOpen: () {
                           Get.toNamed(
                             AppRoutes.placeDetails,
                             arguments: <String, dynamic>{
-                              'title': place.title,
+                              'listingId': place.id,
+                              'title': place.name,
                               'category': place.category,
-                              'rating': place.rating,
-                              'distance': place.distance,
-                              'highlight': place.note,
+                              'rating': place.displayRating.toStringAsFixed(1),
+                              'ratingsCount': place.ratingsCount,
+                              'distance': place.address,
+                              'highlight': place.openingHours,
+                              'website': place.website,
+                              'imageUrl': place.imageUrl,
+                              'description': place.description,
+                              'contactInfo': place.contactInfo,
+                              'openingHours': place.openingHours,
+                              'address': place.address,
+                              'latitude': place.latitude != 0
+                                  ? place.latitude
+                                  : controller.selectedCity.value.latitude,
+                              'longitude': place.longitude != 0
+                                  ? place.longitude
+                                  : controller.selectedCity.value.longitude,
                             },
                           );
                         },
@@ -730,7 +1048,7 @@ class _SavedTab extends StatelessWidget {
 class _SavedPlaceCard extends StatelessWidget {
   const _SavedPlaceCard({required this.place, required this.onOpen});
 
-  final _SavedPlace place;
+  final AdminListingModel place;
   final VoidCallback onOpen;
 
   @override
@@ -769,12 +1087,12 @@ class _SavedPlaceCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      place.title,
+                      place.name,
                       style: AppTextStyles.button.copyWith(fontSize: 15.sp),
                     ),
                     SizedBox(height: AppSpacing.xxs.h),
                     Text(
-                      place.note,
+                      place.openingHours,
                       style: AppTextStyles.body.copyWith(fontSize: 12.8.sp),
                     ),
                     SizedBox(height: AppSpacing.xs.h),
@@ -787,7 +1105,7 @@ class _SavedPlaceCard extends StatelessWidget {
                         ),
                         SizedBox(width: 2.w),
                         Text(
-                          place.rating,
+                          place.displayRating.toStringAsFixed(1),
                           style: AppTextStyles.body.copyWith(fontSize: 12.sp),
                         ),
                         SizedBox(width: AppSpacing.sm.w),
@@ -798,7 +1116,7 @@ class _SavedPlaceCard extends StatelessWidget {
                         ),
                         SizedBox(width: 2.w),
                         Text(
-                          place.distance,
+                          place.address,
                           style: AppTextStyles.body.copyWith(fontSize: 12.sp),
                         ),
                       ],
@@ -857,7 +1175,7 @@ class _SavedEmptyState extends StatelessWidget {
           ),
           SizedBox(height: AppSpacing.xs.h),
           Text(
-            'Start saving places from Explore to build your personal city list.',
+            'No approved listings for this city yet. Try another city or check Explore.',
             textAlign: TextAlign.center,
             style: AppTextStyles.body.copyWith(fontSize: 13.sp),
           ),
@@ -870,22 +1188,6 @@ class _SavedEmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-class _SavedPlace {
-  const _SavedPlace({
-    required this.title,
-    required this.category,
-    required this.rating,
-    required this.distance,
-    required this.note,
-  });
-
-  final String title;
-  final String category;
-  final String rating;
-  final String distance;
-  final String note;
 }
 
 class _ProfileTab extends StatelessWidget {
@@ -1047,15 +1349,6 @@ class _ProfileTab extends StatelessWidget {
               icon: Icons.verified_user_rounded,
               title: 'Current Role',
               subtitle: 'User access is active.',
-            ),
-            _UserCard(
-              icon: Icons.swap_horiz_rounded,
-              title: 'Role Switch (dev)',
-              subtitle: 'Use this to open the admin side quickly.',
-              trailing: TextButton(
-                onPressed: controller.goToAdminView,
-                child: const Text('Switch'),
-              ),
             ),
             _UserCard(
               icon: Icons.logout_rounded,
